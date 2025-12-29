@@ -572,11 +572,27 @@ GLOBAL_VAR_AS(world_topic_last, world.timeofday)
 
 
 /world/proc/SetupLogs()
+	// [SIERRA-EDIT] - ENHANCED_LOGGING - Generate round ID and initialize enhanced logging
+	generate_round_id()
+	GLOB.legacy_game_id = game_id
+	game_id = GLOB.round_id
+	// [/SIERRA-EDIT]
+
 	GLOB.log_directory = "data/logs/[time2text(world.realtime, "YYYY/MM/DD")]/round-"
-	if(game_id)
-		GLOB.log_directory += "[game_id]"
+	// [SIERRA-EDIT] - ENHANCED_LOGGING
+	// if(game_id) // SIERRA-EDIT - ORIGINAL
+	if(GLOB.round_id)
+	// [/SIERRA-EDIT]
+		// [SIERRA-EDIT] - ENHANCED_LOGGING
+		// GLOB.log_directory += "[game_id]" // SIERRA-EDIT - ORIGINAL
+		GLOB.log_directory += "[GLOB.round_id]"
+		// [/SIERRA-EDIT]
 	else
 		GLOB.log_directory += "[replacetext(time_stamp(), ":", ".")]"
+
+	// [SIERRA-ADD] - ENHANCED_LOGGING - Initialize specialized log files
+	initialize_enhanced_logs()
+	// [/SIERRA-ADD]
 
 
 var/global/failed_db_connections = 0
