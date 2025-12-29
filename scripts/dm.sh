@@ -17,25 +17,27 @@ if [[ $dmepath == "" ]]; then
     exit 1
 fi
 
-if [[ -a $dmepath.mdme ]]; then
-    rm $dmepath.mdme
+# Use a temporary .dme file because BYOND compiler treats non-.dme files differently
+# specifically affecting how it loads interface (.dmf) files.
+build_dme="${dmepath}_build.dme"
+
+if [[ -a $build_dme ]]; then
+    rm $build_dme
 fi
 
-cp $dmepath.dme $dmepath.mdme
-if [[ $? != 0 ]]; then
-    echo "Failed to make modified dme, aborting."
-    exit 2
-fi
+# Ensure we use the correct line endings (CRLF) for the modified DME if the original was CRLF
+# but honestly, Linux DM supports LF just fine as long as the extension is .dme
+cp $dmepath.dme $build_dme
 
 for var; do
     arg=$(echo $var | sed -r 's/^.{2}//')
     if [[ $var == -D* ]]; then
-        sed -i '1s!^!#define '$arg'\n!' $dmepath.mdme
+        sed -i "1s!^!#define $arg\n!" $build_dme
     elif [[ $var == -I* ]]; then
-        sed -i 's!// BEGIN_INCLUDE!// BEGIN_INCLUDE\n#include "'$arg'"!' $dmepath.mdme
+        sed -i "s!// BEGIN_INCLUDE!// BEGIN_INCLUDE\n#include \"$arg\"!" $build_dme
     elif [[ $var == -M* ]]; then
-        sed -i '1s/^/#define MAP_OVERRIDE\n/' $dmepath.mdme
-        sed -i 's!#include "maps\\_map_include.dm"!#include "maps\\'$arg'\\'$arg'.dm"!' $dmepath.mdme
+        sed -i "1s!^!#define MAP_OVERRIDE\n!" $build_dme
+        sed -i "s!#include \"maps\\\\_map_include.dm\"!#include \"maps\\\\$arg\\\\$arg.dm\"!" $build_dme
     fi
 done
 
@@ -46,12 +48,12 @@ if [[ $DM == "" ]]; then
     exit 3
 fi
 
-"$DM" $dmepath.mdme | tee build_log.txt
+"$DM" $build_dme | tee build_log.txt
 retval=$?
 
-[[ -e $dmepath.mdme.dmb ]] && mv $dmepath.mdme.dmb $dmepath.dmb
-[[ -e $dmepath.mdme.rsc ]] && mv $dmepath.mdme.rsc $dmepath.rsc
+[[ -e ${dmepath}_build.dmb ]] && mv ${dmepath}_build.dmb $dmepath.dmb
+[[ -e ${dmepath}_build.rsc ]] && mv ${dmepath}_build.rsc $dmepath.rsc
 
-rm $dmepath.mdme
+rm $build_dme
 
 exit $retval
